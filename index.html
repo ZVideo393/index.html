@@ -1,0 +1,487 @@
+import { useState } from "react";
+
+const RUNS = 10;
+
+const defaultTestInfo = { trailName: "", trailNotes: "", weather: "", bikeModel: "", bikeYear: "", bikeSize: "", wheelFront: "", wheelRear: "", forkModel: "", forkTravel: "", shockModel: "", shockTravel: "" };
+
+const emptyRun = () => ({
+  forkPressure: "", forkSag: "", forkTokens: "", forkLSR: "", forkHSR: "", forkLSC: "", forkHSC: "",
+  shockAirPressure: "", shockSpringRate: "", shockSag: "", shockTokens: "", shockLinkage: "", shockLSR: "", shockHSR: "", shockLSC: "", shockHSC: "", shockMode: "",
+  tirePressureFront: "", tirePressureRear: "", tireFront: "", tireRear: "", tireInserts: "",
+  bodyFeel: "", bikeFeel: ""
+});
+
+const defaultData = () => Array.from({ length: RUNS }, emptyRun);
+
+const TABLE_SECTIONS = [
+  {
+    label: "FORK", color: "#5ba4e0",
+    rows: [
+      { key: "forkPressure", label: "Pressure (psi)" },
+      { key: "forkSag",      label: "Sag %" },
+      { key: "forkTokens",   label: "Tokens" },
+      { key: "forkLSR",      label: "LS Rebound" },
+      { key: "forkHSR",      label: "HS Rebound" },
+      { key: "forkLSC",      label: "LS Compression" },
+      { key: "forkHSC",      label: "HS Compression" },
+    ]
+  },
+  {
+    label: "SHOCK", color: "#e05b5b",
+    rows: [
+      { key: "shockAirPressure", label: "Air Pressure (psi)" },
+      { key: "shockSpringRate",  label: "Spring Rate" },
+      { key: "shockSag",         label: "Sag %" },
+      { key: "shockTokens",      label: "Tokens" },
+      { key: "shockLSR",         label: "LS Rebound" },
+      { key: "shockHSR",         label: "HS Rebound" },
+      { key: "shockLSC",         label: "LS Compression" },
+      { key: "shockHSC",         label: "HS Compression" },
+      { key: "shockLinkage",     label: "Linkage" },
+    ]
+  },
+  {
+    label: "TIRES", color: "#7ecc6e",
+    rows: [
+      { key: "tirePressureFront", label: "Front Pressure (psi)" },
+      { key: "tirePressureRear",  label: "Rear Pressure (psi)" },
+      { key: "tireFront",         label: "Front Tire Type" },
+      { key: "tireRear",          label: "Rear Tire Type" },
+      { key: "tireInserts",       label: "Tire Inserts" },
+    ]
+  },
+  {
+    label: "REAR TRIANGLE", color: "#f07840",
+    rows: [
+      { key: "shockMode", label: "Rear Triangle Flip Switch (H,M,L)" },
+    ]
+  },
+  {
+    label: "FEEDBACK", color: "#b97de8",
+    rows: [
+      { key: "bodyFeel", label: "Body Feedback", tall: true },
+      { key: "bikeFeel", label: "Bike Feedback",  tall: true },
+    ]
+  },
+];
+
+const LABEL_W = 180;
+const COL_W = 108;
+
+export default function MTBSetup() {
+  const [view, setView]         = useState("form");
+  const [testInfo, setTestInfo] = useState(defaultTestInfo);
+  const [data, setData]         = useState(defaultData());
+  const [archive, setArchive]   = useState([]);
+  const [saved, setSaved]       = useState(false);
+  const [viewing, setViewing]   = useState(null);
+
+  const setTI = (k) => (e) => setTestInfo(p => ({ ...p, [k]: e.target.value }));
+  const setCell = (runIdx, key, val) =>
+    setData(d => d.map((r, i) => i === runIdx ? { ...r, [key]: val } : r));
+
+  const handleArchive = () => {
+    const hasData = data.some(r => Object.values(r).some(v => v !== "")) || Object.values(testInfo).some(v => v !== "");
+    if (!hasData) { alert("Fill in some data before archiving."); return; }
+    setArchive(a => [{
+      id: Date.now(),
+      date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      testInfo: { ...testInfo },
+      data: JSON.parse(JSON.stringify(data))
+    }, ...a]);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  const CellInput = ({ runIdx, rowKey, tall }) => {
+    const val = data[runIdx][rowKey];
+    const shared = {
+      width: "100%", height: tall ? 76 : 33,
+      background: "transparent", border: "none",
+      padding: "5px 8px",
+      fontFamily: "'IBM Plex Mono', monospace",
+      fontSize: 11, color: "#f0f0ee",
+      outline: "none", resize: "none",
+      boxSizing: "border-box", display: "block",
+    };
+    const handlers = {
+      onFocus: e => e.target.style.background = "rgba(232,160,32,0.09)",
+      onBlur:  e => e.target.style.background = "transparent",
+    };
+    return tall
+      ? <textarea value={val} rows={3} onChange={e => setCell(runIdx, rowKey, e.target.value)} style={shared} {...handlers} />
+      : <input type="text" value={val} onChange={e => setCell(runIdx, rowKey, e.target.value)} style={shared} {...handlers} />;
+  };
+
+  const thLabel = {
+    padding: "10px 14px", textAlign: "left",
+    fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11,
+    fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,0.35)",
+    textTransform: "uppercase", borderBottom: "2px solid rgba(255,255,255,0.1)",
+    background: "#0a0c0b", position: "sticky", left: 0, zIndex: 5,
+    minWidth: LABEL_W, width: LABEL_W,
+  };
+  const thRun = (i) => ({
+    padding: "10px 4px", textAlign: "center",
+    fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12,
+    fontWeight: 800, letterSpacing: 1.5,
+    color: i % 2 === 0 ? "#e8a020" : "#c88a18",
+    borderBottom: "2px solid rgba(255,255,255,0.1)",
+    background: "#0a0c0b", minWidth: COL_W, width: COL_W,
+    borderLeft: "1px solid rgba(255,255,255,0.06)",
+  });
+
+  // Shared text input style for test info header
+  const tiInput = (wide) => ({
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.09)",
+    borderRadius: 7, padding: "7px 11px",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 12, color: "#f0f0ee",
+    outline: "none", resize: "none",
+    width: "100%", boxSizing: "border-box",
+  });
+
+  const ArchiveModal = ({ entry }) => (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", backdropFilter: "blur(12px)", zIndex: 300, overflowY: "auto", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "28px 16px" }}>
+      <div style={{ background: "#111413", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, width: "100%", maxWidth: 1100, padding: "24px 28px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: 2, color: "#f0f0ee" }}>
+            {entry.testInfo?.trailName || "Session"} — {entry.date}
+          </div>
+          <button onClick={() => setViewing(null)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, width: 32, height: 32, color: "#fff", fontSize: 17, cursor: "pointer" }}>×</button>
+        </div>
+
+        {/* Test Info + Bike summary */}
+        {entry.testInfo && (
+          <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 220, background: "rgba(185,125,232,0.08)", border: "1px solid rgba(185,125,232,0.2)", borderRadius: 10, padding: "12px 16px", display: "flex", gap: 20, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "#b97de8", marginBottom: 4, width: "100%" }}>TEST INFO</div>
+              {[["Trail", entry.testInfo.trailName], ["Description", entry.testInfo.trailNotes], ["Weather", entry.testInfo.weather]].map(([l, v]) => v ? (
+                <div key={l}>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 1.5, textTransform: "uppercase", color: "rgba(185,125,232,0.6)", marginBottom: 3 }}>{l}</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontFamily: "'IBM Plex Mono',monospace" }}>{v}</div>
+                </div>
+              ) : null)}
+            </div>
+            <div style={{ minWidth: 180, background: "rgba(232,160,32,0.07)", border: "1px solid rgba(232,160,32,0.2)", borderRadius: 10, padding: "12px 16px", display: "flex", gap: 20, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "#e8a020", marginBottom: 4, width: "100%" }}>BIKE</div>
+              {[["Model", entry.testInfo.bikeModel], ["Year", entry.testInfo.bikeYear], ["Size", entry.testInfo.bikeSize], ["Front Wheel", entry.testInfo.wheelFront], ["Rear Wheel", entry.testInfo.wheelRear], ["Fork", entry.testInfo.forkModel], ["Fork Travel", entry.testInfo.forkTravel], ["Shock", entry.testInfo.shockModel], ["Shock Travel", entry.testInfo.shockTravel]].map(([l, v]) => v ? (
+                <div key={l}>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 1.5, textTransform: "uppercase", color: "rgba(232,160,32,0.6)", marginBottom: 3 }}>{l}</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontFamily: "'IBM Plex Mono',monospace" }}>{v}</div>
+                </div>
+              ) : null)}
+            </div>
+          </div>
+        )}
+
+        <div style={{ overflowX: "auto", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)" }}>
+          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+            <thead>
+              <tr>
+                <th style={thLabel}>Parameter</th>
+                {Array.from({ length: RUNS }, (_, i) => <th key={i} style={thRun(i)}>R{i+1}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {TABLE_SECTIONS.map((sec, si) => (
+                <>
+                  <tr key={"sec"+sec.label}>
+                    <td colSpan={RUNS+1} style={{ background: sec.color+"18", borderTop: si===0?"none":`2px solid ${sec.color}30`, borderBottom:`1px solid ${sec.color}25`, padding:"5px 14px", fontFamily:"'Barlow Condensed',sans-serif", fontSize:10, fontWeight:800, letterSpacing:3, textTransform:"uppercase", color:sec.color }}>
+                      ▸ {sec.label}
+                    </td>
+                  </tr>
+                  {sec.rows.map((row, ri) => (
+                    <tr key={row.key} style={{ background: ri%2===0?"rgba(255,255,255,0.015)":"transparent" }}>
+                      <td style={{ padding:"5px 14px", fontSize:11, color:"rgba(255,255,255,0.5)", fontFamily:"'IBM Plex Mono',monospace", borderBottom:"1px solid rgba(255,255,255,0.05)", whiteSpace:"nowrap", background:ri%2===0?"#0f1110":"#0d0f0e", position:"sticky", left:0, zIndex:1 }}>
+                        <span style={{ borderLeft:`3px solid ${sec.color}60`, paddingLeft:8 }}>{row.label}</span>
+                      </td>
+                      {entry.data.map((run, i) => (
+                        <td key={i} style={{ padding:"5px 8px", fontSize:11, color:"#f0f0ee", fontFamily:"'IBM Plex Mono',monospace", borderBottom:"1px solid rgba(255,255,255,0.05)", borderLeft:"1px solid rgba(255,255,255,0.05)", maxWidth:100, overflow:"hidden", textOverflow:"ellipsis", whiteSpace: row.tall ? "normal" : "nowrap", verticalAlign:"top" }}>
+                          {run[row.key] || <span style={{color:"rgba(255,255,255,0.15)"}}>—</span>}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <button onClick={() => setViewing(null)} style={{ marginTop:18, width:"100%", padding:"11px", background:"rgba(232,160,32,0.1)", border:"1px solid rgba(232,160,32,0.25)", borderRadius:9, color:"#e8a020", fontSize:13, fontWeight:700, fontFamily:"'Barlow Condensed',sans-serif", letterSpacing:2, textTransform:"uppercase", cursor:"pointer" }}>CLOSE</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=IBM+Plex+Mono:wght@300;400;500&family=Bebas+Neue&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #0d0f0e; color: #f0f0ee; font-family: 'IBM Plex Mono', monospace; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 3px; }
+        input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.12); }
+        textarea { resize: none; }
+        tr:hover td { background: rgba(255,255,255,0.022) !important; }
+        input:focus, textarea:focus { border-color: rgba(185,125,232,0.45) !important; background: rgba(185,125,232,0.05) !important; }
+      `}</style>
+
+      {/* HEADER */}
+      <div style={{ background: "rgba(0,0,0,0.75)", borderBottom: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(20px)", position: "sticky", top: 0, zIndex: 100 }}>
+        <div style={{ maxWidth: 1500, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 50 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, fontWeight: 400, letterSpacing: 5, textTransform: "uppercase" }}>SHRED SHEET</div>
+              <div style={{ fontSize: 8, color: "#e8a020", letterSpacing: 2, textTransform: "uppercase", marginTop: -3 }}>MTB Setup & Tuning Log</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {["form", "library"].map(v => (
+              <button key={v} onClick={() => setView(v)} style={{
+                padding: "6px 16px", background: view === v ? "#e8a020" : "transparent",
+                border: `1px solid ${view === v ? "#e8a020" : "rgba(255,255,255,0.12)"}`,
+                borderRadius: 7, color: view === v ? "#0d0f0e" : "rgba(255,255,255,0.55)",
+                fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12,
+                fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", cursor: "pointer"
+              }}>
+                {v === "form" ? "Setup" : `Archive${archive.length ? ` (${archive.length})` : ""}`}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 1500, margin: "0 auto", padding: "20px 24px 80px" }}>
+
+        {/* ── SETUP VIEW ── */}
+        {view === "form" && (
+          <>
+            {/* ── TEST INFO HEADER ── */}
+            <div style={{
+              background: "rgba(185,125,232,0.07)",
+              border: "1px solid rgba(185,125,232,0.2)",
+              borderRadius: 12,
+              padding: "14px 20px",
+              marginBottom: 16,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <div style={{ width: 3, height: 14, background: "#b97de8", borderRadius: 2 }} />
+                <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, fontWeight: 800, letterSpacing: 3, textTransform: "uppercase", color: "#b97de8" }}>
+                  TEST INFO
+                </span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: 14 }}>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "rgba(185,125,232,0.7)", marginBottom: 5 }}>Trail Name</div>
+                  <input
+                    value={testInfo.trailName}
+                    onChange={setTI("trailName")}
+                    placeholder="e.g. Whistler A-Line"
+                    style={tiInput()}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "rgba(185,125,232,0.7)", marginBottom: 5 }}>Trail Description</div>
+                  <input
+                    value={testInfo.trailNotes}
+                    onChange={setTI("trailNotes")}
+                    placeholder="Rocky loam, loose over hard, jump trail..."
+                    style={tiInput()}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "rgba(185,125,232,0.7)", marginBottom: 5 }}>Weather</div>
+                  <input
+                    value={testInfo.weather}
+                    onChange={setTI("weather")}
+                    placeholder="Dry, 72°F, light wind..."
+                    style={tiInput()}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ── BIKE INFO HEADER ── */}
+            <div style={{
+              background: "rgba(232,160,32,0.07)",
+              border: "1px solid rgba(232,160,32,0.2)",
+              borderRadius: 12,
+              padding: "14px 20px",
+              marginBottom: 16,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <div style={{ width: 3, height: 14, background: "#e8a020", borderRadius: 2 }} />
+                <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, fontWeight: 800, letterSpacing: 3, textTransform: "uppercase", color: "#e8a020" }}>
+                  BIKE
+                </span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", gap: 14, marginBottom: 12 }}>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "rgba(232,160,32,0.7)", marginBottom: 5 }}>Model / Name</div>
+                  <input value={testInfo.bikeModel} onChange={setTI("bikeModel")} placeholder="e.g. Trek Slash 9.9" style={tiInput()} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "rgba(232,160,32,0.7)", marginBottom: 5 }}>Year</div>
+                  <input value={testInfo.bikeYear} onChange={setTI("bikeYear")} placeholder="e.g. 2024" style={tiInput()} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "rgba(232,160,32,0.7)", marginBottom: 5 }}>Frame Size</div>
+                  <input value={testInfo.bikeSize} onChange={setTI("bikeSize")} placeholder="e.g. L" style={tiInput()} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "rgba(232,160,32,0.7)", marginBottom: 5 }}>Front Wheel</div>
+                  <input value={testInfo.wheelFront} onChange={setTI("wheelFront")} placeholder='e.g. 29"' style={tiInput()} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "rgba(232,160,32,0.7)", marginBottom: 5 }}>Rear Wheel</div>
+                  <input value={testInfo.wheelRear} onChange={setTI("wheelRear")} placeholder='e.g. 27.5"' style={tiInput()} />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 2fr 1fr", gap: 14 }}>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "rgba(232,160,32,0.7)", marginBottom: 5 }}>Fork Model</div>
+                  <input value={testInfo.forkModel} onChange={setTI("forkModel")} placeholder="e.g. Fox 38 Factory" style={tiInput()} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "rgba(232,160,32,0.7)", marginBottom: 5 }}>Fork Travel</div>
+                  <input value={testInfo.forkTravel} onChange={setTI("forkTravel")} placeholder="e.g. 170mm" style={tiInput()} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "rgba(232,160,32,0.7)", marginBottom: 5 }}>Shock Model</div>
+                  <input value={testInfo.shockModel} onChange={setTI("shockModel")} placeholder="e.g. Fox Float X2 Factory" style={tiInput()} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 2, textTransform: "uppercase", color: "rgba(232,160,32,0.7)", marginBottom: 5 }}>Shock Travel</div>
+                  <input value={testInfo.shockTravel} onChange={setTI("shockTravel")} placeholder="e.g. 65mm" style={tiInput()} />
+                </div>
+              </div>
+            </div>
+
+            {/* ── MAIN TABLE ── */}
+            <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", background: "#0d0f0e" }}>
+              <table style={{ borderCollapse: "collapse", tableLayout: "fixed", width: LABEL_W + COL_W * RUNS }}>
+                <thead>
+                  <tr>
+                    <th style={thLabel}>Parameter</th>
+                    {Array.from({ length: RUNS }, (_, i) => (
+                      <th key={i} style={thRun(i)}>RUN {i + 1}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {TABLE_SECTIONS.map((sec, si) => (
+                    <>
+                      <tr key={"sec-" + sec.label}>
+                        <td colSpan={RUNS + 1} style={{
+                          background: sec.color + "14",
+                          borderTop: si === 0 ? "none" : `2px solid ${sec.color}30`,
+                          borderBottom: `1px solid ${sec.color}25`,
+                          padding: "6px 14px",
+                          fontFamily: "'Barlow Condensed', sans-serif",
+                          fontSize: 10, fontWeight: 800, letterSpacing: 3.5,
+                          textTransform: "uppercase", color: sec.color,
+                        }}>
+                          ▸ {sec.label}
+                        </td>
+                      </tr>
+                      {sec.rows.map((row, ri) => (
+                        <tr key={row.key}>
+                          <td style={{
+                            padding: 0,
+                            borderBottom: "1px solid rgba(255,255,255,0.05)",
+                            borderRight: `2px solid ${sec.color}28`,
+                            background: ri % 2 === 0 ? "#0f1211" : "#0d0f0e",
+                            position: "sticky", left: 0, zIndex: 2,
+                            height: row.tall ? 78 : 33,
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", height: "100%", padding: "0 12px", gap: 8 }}>
+                              <div style={{ width: 3, height: row.tall ? 40 : 16, background: sec.color, borderRadius: 2, flexShrink: 0, opacity: 0.7 }} />
+                              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.58)", fontFamily: "'IBM Plex Mono', monospace", lineHeight: 1.2 }}>
+                                {row.label}
+                              </span>
+                            </div>
+                          </td>
+                          {Array.from({ length: RUNS }, (_, runIdx) => (
+                            <td key={runIdx} style={{
+                              padding: 0,
+                              borderBottom: "1px solid rgba(255,255,255,0.05)",
+                              borderLeft: "1px solid rgba(255,255,255,0.05)",
+                              background: ri % 2 === 0 ? "rgba(255,255,255,0.012)" : "transparent",
+                              height: row.tall ? 78 : 33,
+                              verticalAlign: "top",
+                            }}>
+                              <CellInput runIdx={runIdx} rowKey={row.key} tall={row.tall} />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Archive Button */}
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 28 }}>
+              <button onClick={handleArchive} style={{
+                background: saved ? "#3a8f5c" : "linear-gradient(135deg, #e8a020, #c07810)",
+                border: "none", borderRadius: 11, padding: "14px 44px",
+                fontFamily: "'Barlow Condensed', sans-serif", fontSize: 15,
+                fontWeight: 800, letterSpacing: 3, textTransform: "uppercase",
+                color: saved ? "#fff" : "#0d0f0e", cursor: "pointer", transition: "all 0.3s",
+                boxShadow: saved ? "0 0 24px rgba(58,143,92,0.35)" : "0 0 28px rgba(232,160,32,0.18)",
+              }}>
+                {saved ? "Saved to Archive!" : "Add to Archive"}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── LIBRARY VIEW ── */}
+        {view === "library" && (
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <h1 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 30, fontWeight: 900, letterSpacing: 3, textTransform: "uppercase" }}>Setup Archive</h1>
+              <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 11, marginTop: 4 }}>
+                {archive.length === 0 ? "No sessions archived yet." : `${archive.length} session${archive.length !== 1 ? "s" : ""} saved`}
+              </p>
+            </div>
+            {archive.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "70px 20px", color: "rgba(255,255,255,0.16)", fontSize: 13 }}>
+                <div style={{ fontSize: 13, marginBottom: 12, letterSpacing: 2, fontFamily: "'Barlow Condensed', sans-serif", textTransform: "uppercase" }}>No Sessions</div>
+                <div>Your archived sessions will appear here.</div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {archive.map(entry => {
+                  const filledRuns = entry.data.filter(r => Object.values(r).some(v => v !== "")).length;
+                  return (
+                    <div key={entry.id} style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+                      <div>
+                        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: "#f0f0ee", letterSpacing: 1 }}>
+                          {entry.testInfo?.trailName || "Unnamed Session"}
+                        </div>
+                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.32)", marginTop: 3, fontFamily: "'IBM Plex Mono', monospace" }}>
+                          {entry.date} · {entry.testInfo?.weather || "—"} · {filledRuns} run{filledRuns !== 1 ? "s" : ""} logged
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => setViewing(entry)} style={{ padding: "7px 16px", background: "rgba(232,160,32,0.1)", border: "1px solid rgba(232,160,32,0.25)", borderRadius: 7, color: "#e8a020", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1 }}>VIEW</button>
+                        <button onClick={() => setArchive(a => a.filter(e => e.id !== entry.id))} style={{ padding: "7px 13px", background: "rgba(220,60,60,0.08)", border: "1px solid rgba(220,60,60,0.15)", borderRadius: 7, color: "rgba(220,100,100,0.75)", fontSize: 11, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}>DELETE</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {viewing && <ArchiveModal entry={viewing} />}
+      </div>
+    </>
+  );
+}
