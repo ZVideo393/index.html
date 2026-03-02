@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MTB Setup Sheet</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f4f4f4;
+    color: #222;
+    font-size: 13px;
+  }
+
+  /* ── Header ── */
+  #top-header {
+    background: #1a1a1a;
+    color: #fff;
+    padding: 14px 20px 10px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    border-bottom: 3px solid #e8b800;
+  }
+
+  #app-title {
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: #e8b800;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .bike-banner {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+
+  .bike-field { display: flex; flex-direction: column; flex: 1; min-width: 90px; }
+  .bike-field label { font-size: 9px; color: #888; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 3px; }
+  .bike-field input {
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-bottom: 2px solid #e8b800;
+    color: #fff;
+    font-size: 12px;
+    font-family: inherit;
+    padding: 5px 8px;
+    outline: none;
+  }
+  .bike-field input:focus { border-bottom-color: #fff; }
+
+  .info-banner {
+    display: flex;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #333;
+  }
+
+  .info-field { display: flex; flex-direction: column; flex: 1; }
+  .info-field label { font-size: 9px; color: #888; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 3px; }
+  .info-field input {
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-left: 3px solid #e8b800;
+    color: #fff;
+    font-size: 12px;
+    font-family: inherit;
+    padding: 5px 8px;
+    outline: none;
+    height: 30px;
+  }
+  .info-field input:focus { border-left-color: #fff; }
+
+  /* ── Library button ── */
+  #lib-btn {
+    background: transparent;
+    border: 1px solid #e8b800;
+    color: #e8b800;
+    font-family: inherit;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #lib-btn:hover { background: #e8b800; color: #000; }
+
+  /* ── Main table area ── */
+  #main { padding: 16px 20px 60px; overflow-x: auto; }
+
+  /* ── Table ── */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 1100px;
+    background: #fff;
+    border: 1px solid #ddd;
+    table-layout: fixed;
+  }
+
+  col.label-col { width: 160px; }
+  col.run-col   { width: calc((100% - 160px) / 10); }
+
+  /* Column headers */
+  thead th {
+    background: #1a1a1a;
+    color: #e8b800;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 7px 5px;
+    text-align: center;
+    border: 1px solid #333;
+    font-weight: 600;
+  }
+  thead th:first-child { color: #888; text-align: left; padding-left: 10px; }
+
+  /* Section headers */
+  tr.section-head td {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-top: 2px solid;
+    border-bottom: 1px solid;
+  }
+  tr.section-head.fork td  { color: #0080c8; border-color: #0080c8; background: #f0f8ff; }
+  tr.section-head.shock td { color: #c85000; border-color: #c85000; background: #fff8f0; }
+  tr.section-head.tire td  { color: #2a8a2a; border-color: #2a8a2a; background: #f0fff0; }
+  tr.section-head.feed td  { color: #7a30a0; border-color: #7a30a0; background: #faf0ff; }
+
+  /* Data rows */
+  tr.data-row td {
+    border: 1px solid #e0e0e0;
+    padding: 0;
+    vertical-align: top;
+  }
+  tr.data-row td.row-label {
+    font-size: 10px;
+    color: #555;
+    padding: 5px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+    background: #fafafa;
+    border-left: 3px solid;
+  }
+  tr.data-row.fork  td.row-label { border-left-color: #0080c8; }
+  tr.data-row.shock td.row-label { border-left-color: #c85000; }
+  tr.data-row.tire  td.row-label { border-left-color: #2a8a2a; }
+  tr.data-row.feed  td.row-label { border-left-color: #7a30a0; }
+
+  tr.data-row td textarea {
+    width: 100%;
+    height: 34px;
+    resize: none;
+    border: none;
+    font-family: inherit;
+    font-size: 11px;
+    padding: 4px 6px;
+    outline: none;
+    background: #fff;
+    color: #222;
+    line-height: 1.5;
+  }
+  tr.data-row.feed td textarea { height: 52px; }
+  tr.data-row td textarea:focus { background: #fffef0; }
+  tr.data-row:hover td { background: #f9f9f9; }
+  tr.data-row:hover td textarea { background: #f9f9f9; }
+  tr.data-row:hover td textarea:focus { background: #fffef0; }
+
+  /* ── Archive button ── */
+  #archive-btn {
+    background: #1a1a1a;
+    color: #e8b800;
+    border: none;
+    font-family: inherit;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 12px 28px;
+    cursor: pointer;
+    margin-top: 24px;
+    font-weight: 700;
+    border: 2px solid #1a1a1a;
+  }
+  #archive-btn:hover { background: #e8b800; color: #000; border-color: #e8b800; }
+
+  /* ── Library Panel ── */
+  #library-panel {
+    display: none;
+    position: fixed;
+    top: 0; right: 0;
+    width: 340px;
+    height: 100vh;
+    background: #fff;
+    border-left: 3px solid #e8b800;
+    z-index: 200;
+    overflow-y: auto;
+    padding: 20px;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+  }
+  #library-panel.open { display: block; }
+
+  #lib-close {
+    background: transparent;
+    border: 1px solid #ddd;
+    font-family: inherit;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 5px 12px;
+    cursor: pointer;
+    margin-bottom: 16px;
+  }
+  #lib-close:hover { border-color: #1a1a1a; }
+
+  .lib-title {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 16px;
+  }
+
+  .archive-card {
+    border: 1px solid #e0e0e0;
+    border-left: 3px solid #e8b800;
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+  .archive-card:hover { border-color: #1a1a1a; border-left-color: #e8b800; background: #fafafa; }
+  .archive-card .ac-model { font-size: 12px; font-weight: 700; color: #1a1a1a; margin-bottom: 3px; }
+  .archive-card .ac-detail { font-size: 10px; color: #888; margin-bottom: 2px; }
+  .archive-card .ac-date   { font-size: 9px; color: #bbb; margin-bottom: 8px; letter-spacing: 1px; }
+  .load-btn {
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    font-family: inherit;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+  .load-btn:hover { background: #e8b800; color: #000; }
+
+  .no-archive { font-size: 12px; color: #aaa; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<div id="top-header">
+  <div id="app-title">
+    ⛰ MTB Setup &amp; Tuning Sheet
+    <button id="lib-btn" onclick="toggleLibrary()">Archive Library (<span id="lib-count">0</span>)</button>
+  </div>
+
+  <div class="bike-banner">
+    <div class="bike-field" style="flex:2">
+      <label>Bike Model</label>
+      <input type="text" id="b-model" placeholder="e.g. Trek Slash">
+    </div>
+    <div class="bike-field">
+      <label>Year</label>
+      <input type="text" id="b-year" placeholder="2024">
+    </div>
+    <div class="bike-field">
+      <label>Frame Size</label>
+      <input type="text" id="b-size" placeholder="Large">
+    </div>
+    <div class="bike-field">
+      <label>Front Wheel</label>
+      <input type="text" id="b-front" placeholder='29"'>
+    </div>
+    <div class="bike-field">
+      <label>Rear Wheel</label>
+      <input type="text" id="b-rear" placeholder='29"'>
+    </div>
+  </div>
+
+  <div class="info-banner">
+    <div class="info-field" style="flex:2">
+      <label>Trail Tested On</label>
+      <input type="text" id="b-trail" placeholder="Trail name, location, features...">
+    </div>
+    <div class="info-field">
+      <label>Weather / Conditions</label>
+      <input type="text" id="b-weather" placeholder="Temp, humidity, trail moisture...">
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MAIN TABLE ══════════════ -->
+<div id="main">
+<table id="sheet">
+  <colgroup>
+    <col class="label-col">
+    <col class="run-col"><col class="run-col"><col class="run-col"><col class="run-col">
+    <col class="run-col"><col class="run-col"><col class="run-col"><col class="run-col">
+    <col class="run-col"><col class="run-col">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Setting</th>
+      <th>Run 1</th><th>Run 2</th><th>Run 3</th><th>Run 4</th><th>Run 5</th>
+      <th>Run 6</th><th>Run 7</th><th>Run 8</th><th>Run 9</th><th>Run 10</th>
+    </tr>
+  </thead>
+  <tbody id="sheet-body"></tbody>
+</table>
+
+<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+  <button id="archive-btn" onclick="addToArchive()">+ Add to Archive</button>
+  <span style="font-size:10px;color:#aaa;letter-spacing:1px">Saves current session to Library</span>
+</div>
+</div>
+
+<!-- ══════════════ LIBRARY PANEL ══════════════ -->
+<div id="library-panel">
+  <button id="lib-close" onclick="toggleLibrary()">← Close</button>
+  <div class="lib-title">Archive Library</div>
+  <div id="lib-cards"><p class="no-archive">No archived sessions yet.</p></div>
+</div>
+
+<script>
+// ── Schema ────────────────────────────────────────────────
+const SECTIONS = [
+  {
+    id: 'fork', label: '🍴  Fork Setup', cls: 'fork',
+    fields: [
+      'Fork Pressure (psi)', 'Fork Sag %', 'Fork Tokens',
+      'Fork Low Speed Rebound', 'Fork High Speed Rebound',
+      'Fork Low Speed Compression', 'Fork High Speed Compression',
+      'Fork Spring Rate'
+    ]
+  },
+  {
+    id: 'shock', label: '⚙️  Shock Setup', cls: 'shock',
+    fields: [
+      'Coil Spring Rate', 'Shock Pressure (psi)', 'Shock Sag %', 'Shock Tokens',
+      'Shock Low Speed Rebound', 'Shock High Speed Rebound',
+      'Shock Low Speed Compression', 'Shock High Speed Compression'
+    ]
+  },
+  {
+    id: 'tire', label: '🛞  Tires & Wheels', cls: 'tire',
+    fields: [
+      'Front Tire Type', 'Rear Tire Type',
+      'Front Tire Pressure', 'Rear Tire Pressure', 'Tire Inserts'
+    ]
+  },
+  {
+    id: 'feed', label: '📝  Feedback', cls: 'feed',
+    fields: ['Body Feedback', 'Trail Feedback']
+  }
+];
+
+const RUNS = 10;
+
+// ── Build table ───────────────────────────────────────────
+function buildTable() {
+  const tbody = document.getElementById('sheet-body');
+  tbody.innerHTML = '';
+
+  SECTIONS.forEach(sec => {
+    // Section header row
+    const hr = document.createElement('tr');
+    hr.className = `section-head ${sec.cls}`;
+    const hd = document.createElement('td');
+    hd.colSpan = RUNS + 1;
+    hd.textContent = sec.label;
+    hr.appendChild(hd);
+    tbody.appendChild(hr);
+
+    // Field rows
+    sec.fields.forEach(field => {
+      const tr = document.createElement('tr');
+      tr.className = `data-row ${sec.cls}`;
+
+      const lbl = document.createElement('td');
+      lbl.className = 'row-label';
+      lbl.textContent = field;
+      lbl.title = field;
+      tr.appendChild(lbl);
+
+      for (let r = 1; r <= RUNS; r++) {
+        const td = document.createElement('td');
+        const ta = document.createElement('textarea');
+        ta.setAttribute('data-section', sec.id);
+        ta.setAttribute('data-field', field);
+        ta.setAttribute('data-run', r);
+        ta.spellcheck = false;
+        td.appendChild(ta);
+        tr.appendChild(td);
+      }
+
+      tbody.appendChild(tr);
+    });
+  });
+}
+
+buildTable();
+
+// ── Archive ───────────────────────────────────────────────
+let library = JSON.parse(localStorage.getItem('mtb_library') || '[]');
+updateLibCount();
+
+function captureEntry() {
+  const entry = {
+    id: Date.now(),
+    savedAt: new Date().toLocaleString(),
+    bikeModel:  document.getElementById('b-model').value,
+    bikeYear:   document.getElementById('b-year').value,
+    bikeSize:   document.getElementById('b-size').value,
+    frontWheel: document.getElementById('b-front').value,
+    rearWheel:  document.getElementById('b-rear').value,
+    trail:      document.getElementById('b-trail').value,
+    weather:    document.getElementById('b-weather').value,
+    cells: {}
+  };
+
+  document.querySelectorAll('#sheet-body textarea').forEach(ta => {
+    const key = `${ta.dataset.section}|${ta.dataset.field}|${ta.dataset.run}`;
+    entry.cells[key] = ta.value;
+  });
+
+  return entry;
+}
+
+function addToArchive() {
+  const entry = captureEntry();
+  library.unshift(entry);
+  localStorage.setItem('mtb_library', JSON.stringify(library));
+  updateLibCount();
+  renderLibrary();
+  alert('✓ Saved to Archive Library');
+}
+
+function loadEntry(id) {
+  const entry = library.find(e => e.id === id);
+  if (!entry) return;
+
+  document.getElementById('b-model').value   = entry.bikeModel || '';
+  document.getElementById('b-year').value    = entry.bikeYear  || '';
+  document.getElementById('b-size').value    = entry.bikeSize  || '';
+  document.getElementById('b-front').value   = entry.frontWheel|| '';
+  document.getElementById('b-rear').value    = entry.rearWheel || '';
+  document.getElementById('b-trail').value   = entry.trail     || '';
+  document.getElementById('b-weather').value = entry.weather   || '';
+
+  document.querySelectorAll('#sheet-body textarea').forEach(ta => {
+    const key = `${ta.dataset.section}|${ta.dataset.field}|${ta.dataset.run}`;
+    ta.value = (entry.cells && entry.cells[key]) || '';
+  });
+
+  toggleLibrary();
+}
+
+function deleteEntry(id) {
+  if (!confirm('Delete this archive entry?')) return;
+  library = library.filter(e => e.id !== id);
+  localStorage.setItem('mtb_library', JSON.stringify(library));
+  updateLibCount();
+  renderLibrary();
+}
+
+function updateLibCount() {
+  document.getElementById('lib-count').textContent = library.length;
+}
+
+function renderLibrary() {
+  const container = document.getElementById('lib-cards');
+  if (library.length === 0) {
+    container.innerHTML = '<p class="no-archive">No archived sessions yet.</p>';
+    return;
+  }
+  container.innerHTML = '';
+  library.forEach(e => {
+    const card = document.createElement('div');
+    card.className = 'archive-card';
+    card.innerHTML = `
+      <div class="ac-model">${e.bikeModel || 'Unnamed Bike'} ${e.bikeYear || ''}</div>
+      <div class="ac-detail">Size: ${e.bikeSize || '—'} | ${e.frontWheel || '—'} / ${e.rearWheel || '—'}</div>
+      <div class="ac-detail">Trail: ${e.trail || '—'}</div>
+      <div class="ac-date">${e.savedAt}</div>
+      <button class="load-btn" onclick="loadEntry(${e.id})">Load</button>
+      <button class="load-btn" style="background:#c00;margin-left:6px" onclick="deleteEntry(${e.id})">Delete</button>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function toggleLibrary() {
+  const panel = document.getElementById('library-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) renderLibrary();
+}
+</script>
+</body>
+</html>
